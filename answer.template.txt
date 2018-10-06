@@ -1,0 +1,17 @@
+// const {  } = require(__toolname);
+const { DATA_TYPE_ENUM } = __config;
+
+const config = {
+  type: DATA_TYPE_ENUM.{{dataType}},// 导入的数据类心
+  fnName: '{{fnName}}'//导出的函数名称
+}
+
+const answer = () => {
+  // code ...
+
+}
+
+module.exports = {
+  config,
+  answer
+}
