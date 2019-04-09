@@ -10,8 +10,6 @@ const chalk = require('chalk');
 const symbols = require('log-symbols');
 const { execSync, exec } = require('child_process');
 
-const ANSWER_TEMPLATE_PATH = './answer.template.txt';
-
 // DFS遍历获取code目录
 const getDir = (rootPath, targetDir) => {
   const currCode = path.join(rootPath, targetDir);
@@ -46,7 +44,9 @@ const getCurrTimePrefix = () => {
 
 // 根据模版渲染
 const renderTemplate = ({ dirName, oferDir, meta }) => {
-  const content = fs.readFileSync(path.resolve(__dirname, ANSWER_TEMPLATE_PATH)).toString();
+  const getTemplate = require(path.resolve(oferDir, '.ofer/template.js'))
+  console.log(path.resolve(oferDir, '.ofer/template.js'));
+  const content = getTemplate();
   const result = handlebars.compile(content)(meta);
   const questionDir = path.resolve(oferDir, 'code', dirName);
   fs.mkdirSync(questionDir);
@@ -59,17 +59,11 @@ const renderTemplate = ({ dirName, oferDir, meta }) => {
 const getOferConfig = (oferDir) => {
   const rootDir = process.cwd();
   global.__rootname = rootDir;
-  const injectConfigPath = path.resolve(oferDir, 'config.json');
   const getConfigPath = path.resolve(oferDir, '.ofer/config.js');
-  if (!fs.existsSync(injectConfigPath)) {
-    console.log(`不存在配置文件：${injectConfigPath}`);
-    return null;
-  }
   if (!fs.existsSync(getConfigPath)) {
     console.log(`不存在配置文件：${getConfigPath}`);
     return null;
   }
-  const injectConfig = require(path.resolve(oferDir, 'config.json'));
   const { getConfig } = require(path.resolve(oferDir, '.ofer/config.js'));
 
   if (Object.prototype.toString.call(getConfig) !== '[object Function]') {
@@ -77,10 +71,10 @@ const getOferConfig = (oferDir) => {
     return null;
   }
 
-  return getConfig(injectConfig);
+  return getConfig(oferDir);
 }
 
-program.version('1.0.3', '-v, --version')
+program.version('1.0.4', '-v, --version')
   .command('init')
   .action(() => {
     inquirer.prompt([{
@@ -130,7 +124,7 @@ program.command('start')
     }, {
       type: 'input',
       name: 'questionName',
-      message: '题目的名称（可不填）:'
+      message: '题目代号，用于生成文件夹名（可不填）:'
     }]).then((answers) => {
       const platformEntity = config.platformEntities[answers.platform];
       const dirName = answers.questionName ?
@@ -168,9 +162,12 @@ program.command('start')
     })
   })
 
-program.command('update-ofer')
-  .action(() => {
+program.command('update')
+  .option('-t <branch>')
+  .action(({ T: branch }) => {
     const oferDir = getDir(process.cwd(), 'code');
+    const branchShell = branch ? `origin ${branch}` : 'origin master';
+
     if (!oferDir) {
       console.log(symbols.error, chalk.red('不存在code文件夹'));
       return null;
@@ -189,24 +186,24 @@ program.command('update-ofer')
 git config core.sparsecheckout true &&
 git remote add origin -f https://github.com/tuanzijiang/ofer.git &&
 echo '.ofer' >> .git/info/sparse-checkout &&
-git pull origin master`, {
-      cwd: path.resolve(oferDir, '.ofer-tmp'),
-    }, (err) => {
-      if (err) {
-        console.log(err);
-        execSync('rm -rf .ofer-tmp', {
-          cwd: path.resolve(oferDir),
-        })
-        spinner.text = '更新失败';
-        spinner.fail();
-      } else {
-        execSync('cp -r .ofer-tmp/.ofer .ofer && rm -rf .ofer-tmp', {
-          cwd: path.resolve(oferDir),
-        });
-        spinner.text = '更新成功';
-        spinner.succeed();
-      }
-    })
+git pull ${branchShell}`, {
+        cwd: path.resolve(oferDir, '.ofer-tmp'),
+      }, (err) => {
+        if (err) {
+          console.log(err);
+          execSync('rm -rf .ofer-tmp', {
+            cwd: path.resolve(oferDir),
+          })
+          spinner.text = '更新失败';
+          spinner.fail();
+        } else {
+          execSync('cp -r .ofer-tmp/.ofer .ofer && rm -rf .ofer-tmp', {
+            cwd: path.resolve(oferDir),
+          });
+          spinner.text = '更新成功';
+          spinner.succeed();
+        }
+      })
   })
 
 
